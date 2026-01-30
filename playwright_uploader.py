@@ -59,18 +59,18 @@ def upload_videos_with_playwright():
                     page.goto("https://www.instagram.com/", timeout=60000)
 
                     # Wait for login form
-                    page.wait_for_selector("input[name='username']", timeout=15000)
+                    page.get_by_label("Phone number, username, or email").wait_for(timeout=15000)
 
                     # Fill username
-                    username_field = page.locator("input[name='username']")
+                    username_field = page.get_by_label("Phone number, username, or email")
                     username_field.fill(username)
 
                     # Fill password
-                    password_field = page.locator("input[name='password']")
+                    password_field = page.get_by_label("Password")
                     password_field.fill(password)
 
                     # Click login
-                    login_button = page.locator("button[type='submit']")
+                    login_button = page.get_by_role("button", name="Log in")
                     login_button.click()
 
                     # Wait for login to complete

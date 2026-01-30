@@ -36,101 +36,122 @@ def upload_videos_with_playwright():
 
     with sync_playwright() as p:
         # --- Launch Browser ---
-        device = p.devices['Desktop Chrome']
         browser = p.chromium.launch(headless=not SHOW_BROWSER)
-        context = browser.new_context(**device)
-        page = context.new_page()
 
-        try:
-            # --- Login ---
-            print("Navigating to Instagram login page...")
-            page.goto("https://www.instagram.com/", timeout=60000)
-            
-            # Use more robust locators to find and fill fields
-            print("Locating login fields...")
-            username_field = page.get_by_label("Phone number, username, or email")
-            password_field = page.get_by_label("Password")
+        for account in accounts:
+            username = account['username']
+            password = account['password']
+            session_path = os.path.join(sessions_dir, f"{username}_session.json")
 
-            print("Entering credentials...")
-            username_field.wait_for(timeout=15000)
-            username_field.click()
-            username_field.fill(username)
-            
-            password_field.wait_for(timeout=5000)
-            password_field.click()
-            password_field.fill(password)
-            
-            print("Logging in...")
-            page.get_by_role("button", name="Log in").click()
-            page.wait_for_load_state('networkidle', timeout=60000)
+            print(f"\nProcessing account: {username}")
 
-            # --- Handle Pop-ups ---
-            print("Handling post-login pop-ups...")
-            # "Save your login info?"
-            try:
-                page.get_by_role("button", name="Not Now").click(timeout=10000)
-                print("Dismissed 'Save Info' pop-up.")
-            except TimeoutError:
-                print("No 'Save Info' pop-up appeared.")
-            
-            # "Turn on Notifications"
-            try:
-                page.get_by_role("button", name="Not Now").click(timeout=10000)
-                print("Dismissed 'Notifications' pop-up.")
-            except TimeoutError:
-                print("No 'Notifications' pop-up appeared.")
+            # Check if session exists
+            if os.path.exists(session_path):
+                print(f"Loading existing session for {username}")
+                context = browser.new_context(storage_state=session_path)
+            else:
+                print(f"No session found for {username}, logging in...")
+                context = browser.new_context()
+                page = context.new_page()
 
-            # --- Upload Loop ---
+                try:
+                    # --- Login ---
+                    page.goto("https://www.instagram.com/", timeout=60000)
+
+                    # Wait for login form
+                    page.wait_for_selector("input[name='username']", timeout=15000)
+
+                    # Fill username
+                    username_field = page.locator("input[name='username']")
+                    username_field.fill(username)
+
+                    # Fill password
+                    password_field = page.locator("input[name='password']")
+                    password_field.fill(password)
+
+                    # Click login
+                    login_button = page.locator("button[type='submit']")
+                    login_button.click()
+
+                    # Wait for login to complete
+                    page.wait_for_load_state('networkidle', timeout=60000)
+
+                    # Handle pop-ups
+                    try:
+                        page.get_by_role("button", name="Not Now").click(timeout=10000)
+                    except TimeoutError:
+                        pass
+                    try:
+                        page.get_by_role("button", name="Not Now").click(timeout=10000)
+                    except TimeoutError:
+                        pass
+
+                    # Save session
+                    context.storage_state(path=session_path)
+                    print(f"Session saved for {username}")
+
+                except Exception as e:
+                    print(f"Login failed for {username}: {e}")
+                    context.close()
+                    continue
+
+            page = context.new_page()
+
+            # --- Upload Loop for this account ---
             for video_path in video_files:
                 filename = os.path.basename(video_path)
                 caption = os.path.splitext(filename)[0]
 
-                print(f"\nStarting upload for '{filename}'...")
-                
+                print(f"Starting upload for '{filename}' on {username}...")
+
                 try:
-                    # Click the 'Create' button
+                    # Navigate to home if not already
+                    page.goto("https://www.instagram.com/", timeout=60000)
+
+                    # Click create post
                     page.get_by_role("link", name="New post").click()
 
-                    # Handle the file chooser
+                    # Select file
                     with page.expect_file_chooser() as fc_info:
                         page.get_by_role("button", name="Select from computer").click()
                     file_chooser = fc_info.value
                     file_chooser.set_files(video_path)
-                    print(f"Selected '{filename}' for upload.")
-                    
-                    page.get_by_role("button", name="Next").click() # To Filters
-                    page.get_by_role("button", name="Next").click() # To Share screen
-                    
-                    # Write caption
-                    page.get_by_role("textbox", name="Write a caption...").fill(caption)
-                    print("Added caption.")
 
-                    # Share post
+                    # Proceed
+                    page.get_by_role("button", name="Next").click()
+                    page.get_by_role("button", name="Next").click()
+
+                    # Add caption
+                    page.get_by_role("textbox", name="Write a caption...").fill(caption)
+
+                    # Share
                     page.get_by_role("button", name="Share").click()
-                    
-                    # Wait for confirmation
+
+                    # Wait for success
                     page.wait_for_selector("//span[text()='Your post has been shared.']", timeout=120000)
-                    print(f"Successfully uploaded '{filename}'!")
-                    
-                    # Move the file
-                    shutil.move(video_path, os.path.join(uploaded_dir, filename))
-                    print(f"Moved '{filename}' to uploaded folder.")
+                    print(f"Successfully uploaded '{filename}' on {username}!")
+
+                    # Move file after all accounts have uploaded it
+                    # We'll move after processing all accounts
 
                 except Exception as e:
-                    print(f"Could not upload '{filename}'. Reason: {e}")
-                    # Close the create post dialog if it's still open
+                    print(f"Could not upload '{filename}' on {username}. Reason: {e}")
                     try:
                         page.get_by_label("Close").click()
                     except:
-                        pass # Ignore if it's already closed
-            
-            print("\nAll videos processed.")
+                        pass
 
-        except Exception as e:
-            print(f"\nAn error occurred: {e}")
-        finally:
-            print("Closing browser.")
-            browser.close()
+            # Close context for this account
+            context.close()
+
+        # After all accounts, move uploaded videos
+        for video_path in video_files:
+            filename = os.path.basename(video_path)
+            shutil.move(video_path, os.path.join(uploaded_dir, filename))
+            print(f"Moved '{filename}' to uploaded folder.")
+
+        print("\nAll videos processed for all accounts.")
+        browser.close()
 
 if __name__ == "__main__":
     upload_videos_with_playwright()

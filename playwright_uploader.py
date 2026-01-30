@@ -36,7 +36,14 @@ def upload_videos_with_playwright():
 
     with sync_playwright() as p:
         # --- Launch Browser ---
-        browser = p.chromium.launch(headless=not SHOW_BROWSER)
+        browser = p.chromium.launch(
+            headless=not SHOW_BROWSER,
+            args=[
+                '--disable-blink-features=AutomationControlled',
+                '--disable-web-security',
+                '--disable-features=VizDisplayCompositor'
+            ]
+        )
 
         for account in accounts:
             username = account['username']
@@ -56,17 +63,42 @@ def upload_videos_with_playwright():
 
                 try:
                     # --- Login ---
-                    page.goto("https://www.instagram.com/", timeout=60000)
+                    page.goto("https://www.instagram.com/accounts/login/", timeout=60000)
+                    page.wait_for_load_state('networkidle', timeout=30000)
+
+                    # Debug: Save page source
+                    with open(f"debug_{username}_page.html", "w", encoding="utf-8") as f:
+                        f.write(page.content())
+                    print(f"Saved page source to debug_{username}_page.html")
+
+                    # Debug: Print all placeholders
+                    inputs = page.query_selector_all("input")
+                    print(f"Found {len(inputs)} inputs:")
+                    for inp in inputs:
+                        placeholder = inp.get_attribute('placeholder')
+                        name = inp.get_attribute('name')
+                        aria_label = inp.get_attribute('aria-label')
+                        print(f"  - name: {name}, placeholder: {placeholder}, aria-label: {aria_label}")
 
                     # Wait for login form
-                    page.get_by_label("Phone number, username, or email").wait_for(timeout=15000)
+                    page.get_by_placeholder("Phone number, username, or email").wait_for(timeout=15000)
 
                     # Fill username
-                    username_field = page.get_by_label("Phone number, username, or email")
+                    if page.get_by_placeholder("Phone number, username, or email").is_visible():
+                        username_field = page.get_by_placeholder("Phone number, username, or email")
+                    elif page.locator("input[name='username']").is_visible():
+                        username_field = page.locator("input[name='username']")
+                    else:
+                        username_field = page.locator("input[aria-label*='username']")
                     username_field.fill(username)
 
                     # Fill password
-                    password_field = page.get_by_label("Password")
+                    if page.get_by_placeholder("Password").is_visible():
+                        password_field = page.get_by_placeholder("Password")
+                    elif page.locator("input[name='password']").is_visible():
+                        password_field = page.locator("input[name='password']")
+                    else:
+                        password_field = page.locator("input[aria-label*='password']")
                     password_field.fill(password)
 
                     # Click login

@@ -66,6 +66,9 @@ def upload_videos_with_playwright():
                     page.goto("https://www.instagram.com/accounts/login/", timeout=60000)
                     page.wait_for_load_state('networkidle', timeout=30000)
 
+                    # Additional wait for dynamic content
+                    time.sleep(5)
+
                     # Debug: Save page source
                     with open(f"debug_{username}_page.html", "w", encoding="utf-8") as f:
                         f.write(page.content())
@@ -80,15 +83,25 @@ def upload_videos_with_playwright():
                         aria_label = inp.get_attribute('aria-label')
                         print(f"  - name: {name}, placeholder: {placeholder}, aria-label: {aria_label}")
 
-                    # Wait for login form
-                    page.locator("input[name='username']").wait_for(timeout=15000)
+                    # Wait for login form - try multiple selectors with longer timeout
+                    try:
+                        page.wait_for_selector("input[name='email']", timeout=30000)
+                        username_selector = "input[name='email']"
+                        password_selector = "input[name='pass']"
+                    except TimeoutError:
+                        try:
+                            page.wait_for_selector("input[name='username']", timeout=30000)
+                            username_selector = "input[name='username']"
+                            password_selector = "input[name='password']"
+                        except TimeoutError:
+                            raise Exception("Could not find login form inputs")
 
                     # Fill username
-                    username_field = page.locator("input[name='username']")
+                    username_field = page.locator(username_selector)
                     username_field.fill(username)
 
                     # Fill password
-                    password_field = page.locator("input[name='password']")
+                    password_field = page.locator(password_selector)
                     password_field.fill(password)
 
                     # Click login

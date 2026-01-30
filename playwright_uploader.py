@@ -3,19 +3,20 @@ import glob
 import shutil
 import time
 from playwright.sync_api import sync_playwright, TimeoutError
-import getpass
 
 def upload_videos_with_playwright():
     """
     Logs into Instagram using Playwright and uploads videos from the 'videos' directory.
+    Uses a realistic browser fingerprint and runs in headless mode.
     """
     videos_dir = 'videos'
     uploaded_dir = os.path.join(videos_dir, 'uploaded')
     os.makedirs(uploaded_dir, exist_ok=True)
 
-    # --- Get Credentials ---
-    username = input("Enter your Instagram username: ")
-    password = getpass.getpass("Enter your Instagram password: ")
+    # --- Credentials ---
+    # WARNING: Storing passwords in code is not secure.
+    username = "rinki280200"
+    password = "rMuD@e5HH5vuvJE"
 
     # --- Find Videos ---
     video_files = glob.glob(os.path.join(videos_dir, '*.mp4'))
@@ -27,10 +28,11 @@ def upload_videos_with_playwright():
 
     with sync_playwright() as p:
         # --- Launch Browser ---
-        # Set headless=False to watch the script work.
-        # Set headless=True for it to run in the background.
-        browser = p.chromium.launch(headless=False)
-        context = browser.new_context()
+        # Using a device emulator for a realistic browser fingerprint.
+        # Running in headless mode (no browser window).
+        device = p.devices['Desktop Chrome']
+        browser = p.chromium.launch(headless=True)
+        context = browser.new_context(**device)
         page = context.new_page()
 
         try:
@@ -113,9 +115,8 @@ def upload_videos_with_playwright():
 
         except Exception as e:
             print(f"\nAn error occurred: {e}")
-            print("The script will now close. Please check the browser window for details.")
-            time.sleep(10) # Give user time to see the browser
         finally:
+            print("Closing browser.")
             browser.close()
 
 if __name__ == "__main__":

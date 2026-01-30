@@ -81,24 +81,14 @@ def upload_videos_with_playwright():
                         print(f"  - name: {name}, placeholder: {placeholder}, aria-label: {aria_label}")
 
                     # Wait for login form
-                    page.get_by_placeholder("Phone number, username, or email").wait_for(timeout=15000)
+                    page.locator("input[name='username']").wait_for(timeout=15000)
 
                     # Fill username
-                    if page.get_by_placeholder("Phone number, username, or email").is_visible():
-                        username_field = page.get_by_placeholder("Phone number, username, or email")
-                    elif page.locator("input[name='username']").is_visible():
-                        username_field = page.locator("input[name='username']")
-                    else:
-                        username_field = page.locator("input[aria-label*='username']")
+                    username_field = page.locator("input[name='username']")
                     username_field.fill(username)
 
                     # Fill password
-                    if page.get_by_placeholder("Password").is_visible():
-                        password_field = page.get_by_placeholder("Password")
-                    elif page.locator("input[name='password']").is_visible():
-                        password_field = page.locator("input[name='password']")
-                    else:
-                        password_field = page.locator("input[aria-label*='password']")
+                    password_field = page.locator("input[name='password']")
                     password_field.fill(password)
 
                     # Click login

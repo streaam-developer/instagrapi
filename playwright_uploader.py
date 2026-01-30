@@ -32,7 +32,6 @@ def upload_videos_with_playwright():
 
     with sync_playwright() as p:
         # --- Launch Browser ---
-        # Using a device emulator for a realistic browser fingerprint.
         device = p.devices['Desktop Chrome']
         browser = p.chromium.launch(headless=not SHOW_BROWSER)
         context = browser.new_context(**device)
@@ -43,15 +42,22 @@ def upload_videos_with_playwright():
             print("Navigating to Instagram login page...")
             page.goto("https://www.instagram.com/", timeout=60000)
             
-            # Wait for login fields to appear
-            page.wait_for_selector("input[name='username']", timeout=30000)
+            # Use more robust locators to find and fill fields
+            print("Locating login fields...")
+            username_field = page.get_by_label("Phone number, username, or email")
+            password_field = page.get_by_label("Password")
 
             print("Entering credentials...")
-            page.fill("input[name='username']", username)
-            page.fill("input[name='password']", password)
+            username_field.wait_for(timeout=15000)
+            username_field.click()
+            username_field.fill(username)
+            
+            password_field.wait_for(timeout=5000)
+            password_field.click()
+            password_field.fill(password)
             
             print("Logging in...")
-            page.click("button[type='submit']")
+            page.get_by_role("button", name="Log in").click()
             page.wait_for_load_state('networkidle', timeout=60000)
 
             # --- Handle Pop-ups ---
@@ -124,3 +130,4 @@ def upload_videos_with_playwright():
 
 if __name__ == "__main__":
     upload_videos_with_playwright()
+

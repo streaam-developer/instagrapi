@@ -6,7 +6,7 @@ from playwright.sync_api import sync_playwright, TimeoutError
 
 def upload_videos_with_playwright():
     """
-    Logs into Instagram using Playwright and uploads videos from the 'videos' directory.
+    Logs into multiple Instagram accounts using Playwright, saves sessions, and uploads videos from the 'videos' directory one by one per account.
     Uses a realistic browser fingerprint. Can be configured to run headless or show the browser.
     """
     # --- Configuration ---
@@ -15,12 +15,16 @@ def upload_videos_with_playwright():
 
     videos_dir = 'videos'
     uploaded_dir = os.path.join(videos_dir, 'uploaded')
+    sessions_dir = 'sessions'
     os.makedirs(uploaded_dir, exist_ok=True)
+    os.makedirs(sessions_dir, exist_ok=True)
 
-    # --- Credentials ---
-    # WARNING: Storing passwords in code is not secure.
-    username = "rinki280200"
-    password = "rMuD@e5HH5vuvJE"
+    # --- Accounts ---
+    # List of accounts to automate
+    accounts = [
+        {"username": "rinki280200", "password": "rMuD@e5HH5vuvJE"},
+        # Add more accounts here
+    ]
 
     # --- Find Videos ---
     video_files = glob.glob(os.path.join(videos_dir, '*.mp4'))

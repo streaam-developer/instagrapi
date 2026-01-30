@@ -7,8 +7,12 @@ from playwright.sync_api import sync_playwright, TimeoutError
 def upload_videos_with_playwright():
     """
     Logs into Instagram using Playwright and uploads videos from the 'videos' directory.
-    Uses a realistic browser fingerprint and runs in headless mode.
+    Uses a realistic browser fingerprint. Can be configured to run headless or show the browser.
     """
+    # --- Configuration ---
+    # Set to True to see the browser in action, False to run in the background.
+    SHOW_BROWSER = True
+
     videos_dir = 'videos'
     uploaded_dir = os.path.join(videos_dir, 'uploaded')
     os.makedirs(uploaded_dir, exist_ok=True)
@@ -29,9 +33,8 @@ def upload_videos_with_playwright():
     with sync_playwright() as p:
         # --- Launch Browser ---
         # Using a device emulator for a realistic browser fingerprint.
-        # Running in headless mode (no browser window).
         device = p.devices['Desktop Chrome']
-        browser = p.chromium.launch(headless=True)
+        browser = p.chromium.launch(headless=not SHOW_BROWSER)
         context = browser.new_context(**device)
         page = context.new_page()
 

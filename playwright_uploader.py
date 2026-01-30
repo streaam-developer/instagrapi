@@ -66,8 +66,13 @@ def upload_videos_with_playwright():
                     page.goto("https://www.instagram.com/accounts/login/", timeout=60000)
                     page.wait_for_load_state('networkidle', timeout=30000)
 
-                    # Additional wait for dynamic content
-                    time.sleep(5)
+                    # Wait for 2 minutes as requested to allow page to fully load
+                    print("Waiting 2 minutes for page to fully load...")
+                    time.sleep(120)
+
+                    # Take screenshot for debugging
+                    page.screenshot(path=f"debug_{username}_screenshot.png")
+                    print(f"Saved screenshot to debug_{username}_screenshot.png")
 
                     # Debug: Save page source
                     with open(f"debug_{username}_page.html", "w", encoding="utf-8") as f:
